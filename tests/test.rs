@@ -28,16 +28,18 @@ struct Foo<T: GcMark> {
 
 impl<T: GcMark> GcMark for Foo<T> {
     #[inline(always)]
-    fn gc_root(&self) {
-        GcMark::gc_root(&self.bar)
-    }
-    #[inline(always)]
     fn gc_unroot(&self) {
         GcMark::gc_unroot(&self.bar)
     }
     #[inline(always)]
     fn gc_mark(&self) {
         GcMark::gc_mark(&self.bar)
+    }
+}
+
+impl<T: GcMark> Drop for Foo<T> {
+    fn drop(&mut self) {
+        println!("drop");
     }
 }
 
@@ -58,4 +60,27 @@ fn test_comple() {
 
     assert_eq!(gc_state.bytes_allocated(), 72);
     assert_eq!(*gc_a.bar, 'a');
+}
+
+#[test]
+fn test_thrashing() {
+    let mut gc_state = GcState::new();
+
+    for i in 0..32 {
+        let bar = Gc::new_with_gc_state(&mut gc_state, i);
+
+        for _ in 0..8 {
+            let foo = Gc::new_with_gc_state(&mut gc_state, Foo {
+                bar: bar.clone()
+            });
+
+            for _ in 0..8 {
+                let _ = foo.clone();
+            }
+        }
+    }
+
+    assert_eq!(gc_state.bytes_allocated(), 112);
+    gc_state.mark_and_sweep();
+    assert_eq!(gc_state.bytes_allocated(), 0);
 }

@@ -1,3 +1,4 @@
+#![feature(heap_api)]
 #![feature(alloc)]
 #![feature(collections)]
 #![feature(shared)]

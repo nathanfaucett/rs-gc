@@ -52,35 +52,25 @@ impl<T: GcMark + ?Sized> Gc<T> {
     pub fn as_ref(&self) -> &T {
         self.gc_box_as_ref().as_ref()
     }
-    #[inline(always)]
-    pub fn as_mut(&mut self) -> &mut T {
-        self.gc_box_as_mut().as_mut()
-    }
 }
 
 impl<T: GcMark + ?Sized> Clone for Gc<T> {
     #[inline]
     fn clone(&self) -> Self {
         let gc = Self::from_gc_box(self.gc_box);
-        gc.gc_box_as_mut().gc_root();
+        gc.gc_box_as_mut().inc_roots();
         gc
     }
 }
 
 impl<T: GcMark + ?Sized> Drop for Gc<T> {
-    #[inline]
+    #[inline(always)]
     fn drop(&mut self) {
         self.gc_box_as_mut().dec_roots();
     }
 }
 
 impl<T: GcMark + ?Sized> GcMark for Gc<T> {
-    #[inline(always)]
-    fn gc_root(&self) {
-        unsafe {
-            &(*self.gc_box.as_ptr()).gc_root();
-        }
-    }
     #[inline(always)]
     fn gc_unroot(&self) {
         unsafe {

@@ -1,3 +1,4 @@
+use alloc::heap;
 use alloc::boxed::Box;
 
 use core::mem;
@@ -19,7 +20,7 @@ pub struct GcState {
 
 impl GcState {
 
-    #[inline]
+    #[inline(always)]
     pub fn new() -> Self {
         GcState {
             gc_box_root: None,
@@ -35,7 +36,7 @@ impl GcState {
             self.mark_and_sweep();
 
             if self.bytes_allocated as f64 > self.threshold as f64 * USED_SPACE_RATIO {
-                self.threshold = (self.bytes_allocated as f64 / USED_SPACE_RATIO) as usize
+                self.threshold = (self.bytes_allocated as f64 / USED_SPACE_RATIO) as usize;
             }
         }
 
@@ -52,50 +53,63 @@ impl GcState {
         gc_box_shared
     }
 
+    #[inline(always)]
     pub fn bytes_allocated(&self) -> usize {
         self.bytes_allocated
     }
 
     #[inline]
     fn mark(&mut self) {
-        let mut n = self.gc_box_root;
+        let mut node_option = self.gc_box_root;
 
-        while let Some(node) = n {
-            let gc_box = unsafe { node.as_ref() };
+        while let Some(node) = node_option {
+            let gc_box = unsafe { &*node.as_ptr() };
 
             if gc_box.roots() > 0 {
                 gc_box.gc_mark();
             }
 
-            n = gc_box.next();
+            node_option = gc_box.next();
         }
     }
 
     #[inline]
     fn sweep(&mut self) {
-        let mut n = self.gc_box_root;
-        let mut pn = None;
+        let mut node_option = self.gc_box_root;
+        let mut prev_node_option: Option<Shared<GcBox<GcMark>>> = None;
+        let mut new_gc_box_root = node_option;
 
-        while let Some(mut node) = n {
-            let gc_box = unsafe { node.as_mut() };
+        while let Some(node) = node_option {
+            let gc_box = unsafe { &mut *node.as_ptr() };
 
             if gc_box.is_marked() {
                 gc_box.unmark();
-
-                pn = n;
-                n = gc_box.next();
+                prev_node_option = node_option;
+                node_option = gc_box.next();
             } else {
-                n = gc_box.next();
+                let next_option = gc_box.next();
 
-                if let Some(ref mut prev_node) = pn {
+                if let Some(ref mut prev_node) = prev_node_option {
                     unsafe {
-                        prev_node.as_mut().set_next(n)
+                        prev_node.as_mut().set_next(next_option)
                     }
+                } else {
+                    new_gc_box_root = next_option;
                 }
 
-                self.bytes_allocated -= mem::size_of_val::<GcBox<_>>(&*gc_box);
+                let size = mem::size_of_val::<GcBox<_>>(gc_box);
+                let align = mem::align_of_val::<GcBox<_>>(gc_box);
+
+                self.bytes_allocated -= size;
+                unsafe {
+                    heap::deallocate(node.as_ptr() as *mut u8, size, align);
+                }
+
+                node_option = next_option;
             }
         }
+
+        self.gc_box_root = new_gc_box_root;
     }
 
     #[inline(always)]

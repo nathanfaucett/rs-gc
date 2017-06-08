@@ -5,8 +5,6 @@ use collections::string::String;
 
 pub trait GcMark {
     #[inline(always)]
-    fn gc_root(&self) {}
-    #[inline(always)]
     fn gc_unroot(&self) {}
     #[inline(always)]
     fn gc_mark(&self) {}
@@ -33,10 +31,6 @@ impl<'a> GcMark for &'a str {}
 
 impl<T: GcMark> GcMark for Box<T> {
     #[inline(always)]
-    fn gc_root(&self) {
-        GcMark::gc_root(self.as_ref())
-    }
-    #[inline(always)]
     fn gc_unroot(&self) {
         GcMark::gc_unroot(self.as_ref())
     }
@@ -47,21 +41,14 @@ impl<T: GcMark> GcMark for Box<T> {
 }
 
 impl<T: GcMark> GcMark for Option<T> {
-    #[inline]
-    fn gc_root(&self) {
-        match self {
-            &Some(ref value) => GcMark::gc_root(value),
-            &None => (),
-        }
-    }
-    #[inline]
+    #[inline(always)]
     fn gc_unroot(&self) {
         match self {
             &Some(ref value) => GcMark::gc_unroot(value),
             &None => (),
         }
     }
-    #[inline]
+    #[inline(always)]
     fn gc_mark(&self) {
         match self {
             &Some(ref value) => GcMark::gc_mark(value),
