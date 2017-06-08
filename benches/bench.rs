@@ -23,3 +23,14 @@ fn bench_gc(b: &mut Bencher) {
         }
     });
 }
+
+#[bench]
+fn bench_local_thread_gc(b: &mut Bencher) {
+    b.iter(|| {
+        for _ in 0..32 {
+            for i in 0..32 {
+                let _ = Gc::new(i);
+            }
+        }
+    });
+}

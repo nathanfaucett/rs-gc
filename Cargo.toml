@@ -12,3 +12,6 @@ homepage = "https://github.com/nathanfaucett/rs-gc"
 
 [dependencies]
 [dev-dependencies]
+
+[features]
+no_std = []

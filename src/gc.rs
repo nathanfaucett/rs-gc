@@ -5,11 +5,16 @@ use core::ptr::Shared;
 use super::gc_box::GcBox;
 use super::gc_mark::GcMark;
 use super::gc_state::GcState;
+#[cfg(not(feature = "no_std"))]
+use super::thread::GC_STATE;
 
 
 pub struct Gc<T: GcMark + ?Sized> {
     gc_box: Shared<GcBox<T>>,
 }
+
+unsafe impl<T: GcMark + ?Sized> Send for Gc<T> {}
+unsafe impl<T: GcMark + ?Sized> Sync for Gc<T> {}
 
 impl<T: GcMark + 'static> Gc<T> {
 
@@ -23,6 +28,14 @@ impl<T: GcMark + 'static> Gc<T> {
         }
 
         Self::from_gc_box(gc_box)
+    }
+
+    #[cfg(not(feature = "no_std"))]
+    #[inline]
+    pub fn new(value: T) -> Self {
+        GC_STATE.with(|gc_state| {
+            Self::new_with_gc_state(&mut *gc_state.borrow_mut(), value)
+        })
     }
 }
 

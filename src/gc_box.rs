@@ -12,6 +12,9 @@ pub struct GcBox<T: GcMark + ?Sized> {
     data: T
 }
 
+unsafe impl<T: GcMark + ?Sized> Send for GcBox<T> {}
+unsafe impl<T: GcMark + ?Sized> Sync for GcBox<T> {}
+
 impl<T: GcMark> GcBox<T> {
 
     #[inline(always)]

@@ -1,7 +1,7 @@
 extern crate gc;
 
 
-use gc::{GcState, Gc, GcMark};
+use gc::{GcState, Gc, GcMark, GC_STATE};
 
 
 #[test]
@@ -65,17 +65,18 @@ fn test_comple() {
 #[test]
 fn test_thrashing() {
     let mut gc_state = GcState::new();
+    let mut count = 0;
 
     for i in 0..32 {
         let bar = Gc::new_with_gc_state(&mut gc_state, i);
 
-        for _ in 0..8 {
+        for _ in 0..32 {
             let foo = Gc::new_with_gc_state(&mut gc_state, Foo {
-                bar: bar.clone()
+                bar: bar.clone(),
             });
 
-            for _ in 0..8 {
-                let _ = foo.clone();
+            for _ in 0..32 {
+                count += *foo.bar;
             }
         }
     }
@@ -83,4 +84,44 @@ fn test_thrashing() {
     assert_eq!(gc_state.bytes_allocated(), 112);
     gc_state.mark_and_sweep();
     assert_eq!(gc_state.bytes_allocated(), 0);
+
+    assert_eq!(count, 507904);
+}
+
+#[test]
+fn test_threading() {
+    use std::thread;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    let count = Arc::new(AtomicUsize::new(0));
+
+    for i in 0..32 {
+        let bar = Gc::new(i);
+        let c = count.clone();
+
+        let handle = thread::spawn(move || {
+            for _ in 0..32 {
+                let foo = Gc::new(Foo {
+                    bar: bar.clone(),
+                });
+
+                for _ in 0..32 {
+                    c.fetch_add(*foo.bar, Ordering::Relaxed);
+                }
+            }
+        });
+
+        let _ = handle.join();
+    }
+
+    GC_STATE.with(|state| {
+        let mut state = state.borrow_mut();
+
+        assert_eq!(state.bytes_allocated(), 160);
+        state.mark_and_sweep();
+        assert_eq!(state.bytes_allocated(), 0);
+    });
+
+    assert_eq!(count.load(Ordering::Relaxed), 507904);
 }
