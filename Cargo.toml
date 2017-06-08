@@ -1,0 +1,14 @@
+[package]
+name = "gc"
+version = "0.1.0"
+authors = ["nathanfaucett <nathanfaucett@gmail.com>"]
+
+keywords = ["gc", "garbage", "collection", "collector"]
+description = "small garbage collection"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/nathanfaucett/rs-gc.git"
+homepage = "https://github.com/nathanfaucett/rs-gc"
+
+[dependencies]
+[dev-dependencies]
