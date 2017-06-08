@@ -8,28 +8,17 @@ extern crate gc;
 
 use test::Bencher;
 
-use gc::{Gc, GcState};
+use gc::Gc;
 
 
 #[bench]
-fn bench_gc(b: &mut Bencher) {
-    let mut gc_state = GcState::new();
-
+fn bench_sgc(b: &mut Bencher) {
     b.iter(|| {
-        for _ in 0..32 {
-            for i in 0..32 {
-                let _ = Gc::new_with_gc_state(&mut gc_state, i);
-            }
-        }
-    });
-}
+        for i in 0..32 {
+            let a = Gc::new(i);
 
-#[bench]
-fn bench_local_thread_gc(b: &mut Bencher) {
-    b.iter(|| {
-        for _ in 0..32 {
-            for i in 0..32 {
-                let _ = Gc::new(i);
+            for _ in 0..32 {
+                assert_eq!(*a, i);
             }
         }
     });

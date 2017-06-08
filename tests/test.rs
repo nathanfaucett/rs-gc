@@ -37,12 +37,6 @@ impl<T: GcMark> GcMark for Foo<T> {
     }
 }
 
-impl<T: GcMark> Drop for Foo<T> {
-    fn drop(&mut self) {
-        println!("drop");
-    }
-}
-
 #[test]
 fn test_comple() {
     let mut gc_state = GcState::new();

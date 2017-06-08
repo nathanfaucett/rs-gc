@@ -6,9 +6,9 @@ use super::gc_mark::GcMark;
 
 
 pub struct GcBox<T: GcMark + ?Sized> {
+    next: Option<Shared<GcBox<GcMark>>>,
     roots: AtomicUsize,
     marked: AtomicBool,
-    next: Option<Shared<GcBox<GcMark>>>,
     data: T
 }
 
@@ -20,9 +20,9 @@ impl<T: GcMark> GcBox<T> {
     #[inline(always)]
     pub fn new(value: T, next: Option<Shared<GcBox<GcMark>>>) -> Self {
         GcBox {
+            next: next,
             roots: AtomicUsize::new(1usize),
             marked: AtomicBool::new(false),
-            next: next,
             data: value
         }
     }

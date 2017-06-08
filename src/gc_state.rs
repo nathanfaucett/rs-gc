@@ -58,6 +58,11 @@ impl GcState {
         self.bytes_allocated
     }
 
+    #[inline(always)]
+    pub fn threshold(&self) -> usize {
+        self.threshold
+    }
+
     #[inline]
     fn mark(&mut self) {
         let mut node_option = self.gc_box_root;
